@@ -75,6 +75,7 @@ struct utm {
   void* ptr;
   size_t size;
   unsigned long order;
+  bool is_cma;
 };
 
 
@@ -85,6 +86,7 @@ struct enclave
   struct utm* utm;
   struct epm* epm;
   bool is_init;
+  bool is_cma;
 };
 
 

@@ -50,8 +50,10 @@ int destroy_enclave(struct enclave* enclave)
   {
     utm_destroy(utm);
     kfree(utm);
+    // printk(KERN_INFO "[driver] [keystone-enclave.c] kfree utm ended\n");
   }
   kfree(enclave);
+  // printk(KERN_INFO "[driver] [keystone-enclave.c] kfree enclave ended\n");
   return 0;
 }
 
@@ -83,6 +85,7 @@ struct enclave* create_enclave(unsigned long min_pages)
   return enclave;
 
  error_destroy_enclave:
+  printk(KERN_INFO "[driver] [keystone-enclave.c] label error_destroy_enclave\n");
   destroy_enclave(enclave);
  error_no_free:
   return NULL;
