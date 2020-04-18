@@ -105,12 +105,13 @@ int utm_init(struct utm* utm, size_t untrusted_size)
   req_pages += PAGE_UP(untrusted_size)/PAGE_SIZE;
   order = ilog2(req_pages - 1) + 1;
   count = 0x1 << order;
-
+  utm->ptr = 0;
   utm->order = order;
 
   /* Currently, UTM does not utilize CMA.
    * It is always allocated from the buddy allocator */
-  utm->ptr = (void*) __get_free_pages(GFP_HIGHUSER, order);
+  if (order <= MAX_ORDER)
+    utm->ptr = (void*) __get_free_pages(GFP_HIGHUSER, order);
   if (!utm->ptr) {
     printk(KERN_INFO "[driver] Buddy Allocator for UTM failed\n");
 #ifdef CONFIG_CMA
@@ -125,10 +126,6 @@ int utm_init(struct utm* utm, size_t untrusted_size)
 #endif
     if(!utm->ptr)
       return -ENOMEM;
-    ////////////////////
-    
-    // printk(KERN_INFO "UTM INIT UNSUCCESSFUL\n");
-    // return -ENOMEM;
   }
   printk(KERN_INFO "[driver] UTM INIT successful\n");
   utm->size = count * PAGE_SIZE;
