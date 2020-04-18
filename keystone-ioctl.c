@@ -30,6 +30,7 @@ int keystone_create_enclave(struct file *filep, unsigned long arg)
 
   filep->private_data = (void *) enclp->eid;
 
+  printk(KERN_INFO "[driver] [keystone-ioctl.c] keystone_create_enclave successfully finished\n");
   return 0;
 }
 
@@ -64,7 +65,8 @@ int keystone_finalize_enclave(unsigned long arg)
     create_args.utm_region.paddr = 0;
     create_args.utm_region.size = 0;
   }
-
+  printk(KERN_INFO "[driver] [keystone-ioctl.c] utm args set - paddr = 0x%zx and size = %zd\n",
+        __pa(utm->ptr), utm->size);
   // physical addresses for runtime, user, and freemem
   create_args.runtime_paddr = enclp->runtime_paddr;
   create_args.user_paddr = enclp->user_paddr;
@@ -85,6 +87,7 @@ int keystone_finalize_enclave(unsigned long arg)
 
 error_destroy_enclave:
   /* This can handle partial initialization failure */
+  printk(KERN_INFO "[driver] [keystone-enclave.c] label error_destroy_enclave\n");
   destroy_enclave(enclave);
 
   return ret;
@@ -133,12 +136,13 @@ int utm_init_ioctl(struct file *filp, unsigned long arg)
   }
 
   ret = utm_init(utm, untrusted_size);
-
+  printk(KERN_INFO "[driver] In utm_init_ioctl - utm_init finished\n");
   /* prepare for mmap */
   enclave->utm = utm;
 
   enclp->utm_free_ptr = __pa(utm->ptr);
 
+  printk(KERN_INFO "[driver] In utm_init_ioctl - enclp->utm_free_ptr = 0x%lx\n",enclp->utm_free_ptr );
   return ret;
 }
 
@@ -148,7 +152,7 @@ int keystone_destroy_enclave(struct file *filep, unsigned long arg)
   int ret;
   struct keystone_ioctl_create_enclave *enclp = (struct keystone_ioctl_create_enclave *) arg;
   unsigned long ueid = enclp->eid;
-
+  printk(KERN_INFO "[driver] [keystone-ioctl.c] keystone_destroy_enclave called\n");
   ret = __keystone_destroy_enclave(ueid);
   if (!ret) {
     filep->private_data = NULL;
@@ -172,6 +176,7 @@ int __keystone_destroy_enclave(unsigned int ueid)
     return ret;
   }
 
+  printk(KERN_INFO "[driver] [keystone-ioctl.c] __keystone_destroy_enclave called\n");
   destroy_enclave(enclave);
   enclave_idr_remove(ueid);
 
@@ -235,6 +240,7 @@ long keystone_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
      * We didn't identified the exact problem, so we'll have these until we figure out */
     case KEYSTONE_IOC_UTM_INIT:
       ret = utm_init_ioctl(filep, (unsigned long) data);
+      printk(KERN_INFO "[driver] [keystone-ioctl.c] Switchcase over\n");
       break;
     default:
       return -ENOSYS;
@@ -242,7 +248,7 @@ long keystone_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 
   if (copy_to_user((void __user*) arg, data, ioc_size))
     return -EFAULT;
-
+  printk(KERN_INFO "[driver] [keystone-ioctl.c] ioctl over\n");
   return ret;
 }
 
@@ -264,6 +270,7 @@ int keystone_release(struct inode *inode, struct file *file) {
     return -EINVAL;
   }
   if (enclave->close_on_pexit) {
+    printk(KERN_INFO "[driver] [keystone-ioctl.c] keystone release\n");
     return __keystone_destroy_enclave(ueid);
   }
   return 0;

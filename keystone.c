@@ -48,11 +48,9 @@ int keystone_mmap(struct file* filp, struct vm_area_struct *vma)
     keystone_err("invalid enclave id\n");
     return -EINVAL;
   }
-
   utm = enclave->utm;
   epm = enclave->epm;
   vsize = vma->vm_end - vma->vm_start;
-
   if(enclave->is_init){
     if (vsize > PAGE_SIZE)
       return -EINVAL;
@@ -65,12 +63,15 @@ int keystone_mmap(struct file* filp, struct vm_area_struct *vma)
   else
   {
     psize = utm->size;
+    printk(KERN_INFO "[driver] [keystone.c] keystone mmap called for utm \n");
     if (vsize > psize)
       return -EINVAL;
+    // printk(KERN_INFO "[driver] [keystone.c] keystone remap_pfn_range going to be called. \n");
     remap_pfn_range(vma,
                     vma->vm_start,
                     __pa(utm->ptr) >> PAGE_SHIFT,
                     vsize, vma->vm_page_prot);
+    // printk(KERN_INFO "[driver] [keystone.c] remapping called. \n");
   }
   return 0;
 }

@@ -78,7 +78,18 @@ int epm_init(struct epm* epm, unsigned int min_pages)
 
 int utm_destroy(struct utm* utm){
 
-  if(utm->ptr != NULL){
+  if(utm->ptr == NULL)
+    return 0;
+  printk(KERN_INFO "[driver] Destroying utm\n");
+  if (utm->is_cma) {
+    dma_free_coherent(keystone_dev.this_device,
+        utm->size,
+        (void*) utm->ptr,
+        __pa(utm->ptr));
+    
+    printk(KERN_INFO "[driver] [cma_condition] Successfully destroyed 0x%zx \n", utm->ptr);
+
+  } else {
     free_pages((vaddr_t)utm->ptr, utm->order);
   }
 
@@ -90,6 +101,7 @@ int utm_init(struct utm* utm, size_t untrusted_size)
   unsigned long req_pages = 0;
   unsigned long order = 0;
   unsigned long count;
+  phys_addr_t device_phys_addr = 0;
   req_pages += PAGE_UP(untrusted_size)/PAGE_SIZE;
   order = ilog2(req_pages - 1) + 1;
   count = 0x1 << order;
@@ -100,14 +112,33 @@ int utm_init(struct utm* utm, size_t untrusted_size)
    * It is always allocated from the buddy allocator */
   utm->ptr = (void*) __get_free_pages(GFP_HIGHUSER, order);
   if (!utm->ptr) {
-    return -ENOMEM;
+    printk(KERN_INFO "[driver] Buddy Allocator for UTM failed\n");
+#ifdef CONFIG_CMA
+    /* CMA Allocation */
+    utm->is_cma = 1;
+    utm->ptr = (void *) dma_alloc_coherent(keystone_dev.this_device,
+      count << PAGE_SHIFT,
+      &device_phys_addr,
+      GFP_KERNEL | __GFP_DMA32);
+    if(!device_phys_addr)
+      return -ENOMEM;
+#endif
+    if(!utm->ptr)
+      return -ENOMEM;
+    ////////////////////
+    
+    // printk(KERN_INFO "UTM INIT UNSUCCESSFUL\n");
+    // return -ENOMEM;
   }
-
+  printk(KERN_INFO "[driver] UTM INIT successful\n");
   utm->size = count * PAGE_SIZE;
+  printk(KERN_INFO " [driver] UTM ptr 0x%zx, UTM size %zd, UTM order 0x%zd, UTM root pg table 0x%zx\n", 
+            utm->ptr, utm->size, utm->order, utm->root_page_table);
   if (utm->size != untrusted_size) {
     /* Instead of failing, we just warn that the user has to fix the parameter. */
     keystone_warn("shared buffer size is not multiple of PAGE_SIZE\n");
   }
 
+  printk("[driver] Finished UTM_INIT\n");
   return 0;
 }
